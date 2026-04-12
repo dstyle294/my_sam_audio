@@ -1,0 +1,14 @@
+{"time":"2026-01-12T18:15:06.182195478-08:00","level":"INFO","msg":"stream: starting","core version":"0.21.0"}
+{"time":"2026-01-12T18:15:06.410962954-08:00","level":"INFO","msg":"stream: created new stream","id":"4hmhn1wh"}
+{"time":"2026-01-12T18:15:06.41100566-08:00","level":"INFO","msg":"stream: started","id":"4hmhn1wh"}
+{"time":"2026-01-12T18:15:06.41105175-08:00","level":"INFO","msg":"writer: Do: started","stream_id":"4hmhn1wh"}
+{"time":"2026-01-12T18:15:06.411041781-08:00","level":"INFO","msg":"sender: started","stream_id":"4hmhn1wh"}
+{"time":"2026-01-12T18:15:06.411079164-08:00","level":"INFO","msg":"handler: started","stream_id":"4hmhn1wh"}
+{"time":"2026-01-12T18:15:06.735803483-08:00","level":"INFO","msg":"stream: closing","id":"4hmhn1wh"}
+{"time":"2026-01-12T18:15:06.850721655-08:00","level":"ERROR","msg":"HTTP error","status":404,"method":"POST","url":"https://api.wandb.ai/graphql"}
+{"time":"2026-01-12T18:15:06.850899352-08:00","level":"ERROR","msg":"runfiles: CreateRunFiles returned error: returned error 404: {\"data\":{\"createRunFiles\":null},\"errors\":[{\"message\":\"project /pa2.0_test not found during createRunFiles\",\"path\":[\"createRunFiles\"]}]}"}
+{"time":"2026-01-12T18:15:06.85173097-08:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2026-01-12T18:15:06.851809623-08:00","level":"INFO","msg":"handler: closed","stream_id":"4hmhn1wh"}
+{"time":"2026-01-12T18:15:06.851825462-08:00","level":"INFO","msg":"writer: Close: closed","stream_id":"4hmhn1wh"}
+{"time":"2026-01-12T18:15:06.851833867-08:00","level":"INFO","msg":"sender: closed","stream_id":"4hmhn1wh"}
+{"time":"2026-01-12T18:15:06.8519016-08:00","level":"INFO","msg":"stream: closed","id":"4hmhn1wh"}

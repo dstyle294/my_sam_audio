@@ -24,15 +24,22 @@ dependencies = [
     "perception-models@git+https://github.com/facebookresearch/perception_models@unpin-deps",
     "pydub",
     "torch",
+    "pyha-analyzer",
     "torchaudio",
     "torchcodec",
     "torchdiffeq",
     "torchvision",
     "transformers>=4.54.0",
+    "datasets>=3.5.1,<4.0.0",
+    "librosa>=0.10.2.post1",
+    "matplotlib>=3.10.3",
 ]
 
 [tool.setuptools.packages.find]
 include = ["sam_audio*"]
+
+[tool.uv.sources]
+pyha-analyzer = { path = "pyha-analyzer-2.0" }
 
 [tool.ruff]
 
