@@ -9,15 +9,15 @@ birdset_extractor = Birdset()
 
 regions = ["HSN", "PER", "UHH", "SNE", "POW", "NES"]
 
-ds = load_dataset("DBD-research-group/BirdSet", regions[0], trust_remote_code=True)
+ds = load_dataset("DBD-research-group/BirdSet", regions[1], trust_remote_code=True)
 
 METADATA_FILE = "metadata.csv"
 
-output_dir = "/home/s.dalal.334/mount/SAM/HSN/test_5s/"
+output_dir = "/home/s.dalal.334/mount/SAM/PER"
 model = "sam-audio-base"
 type = "32k"
 split = "test"
-num_clips = 12000
+num_clips = len(ds["test_5s"])
 
 os.makedirs(output_dir, exist_ok=True)
 
@@ -46,7 +46,7 @@ ds["test_5s"] = ds["test_5s"].select(range(num_clips))
 
 print(ds["test_5s"][0])
 
-ds["test_5s"] = ds["test_5s"].map(sam_transform, batched=True, batch_size=1, load_from_cache_file=False, keep_in_memory=False, fn_kwargs={"prompt": "A bird chirping"})
+ds["test_5s"] = ds["test_5s"].map(sam_transform, batched=True, batch_size=4, load_from_cache_file=False, keep_in_memory=False, fn_kwargs={"prompt": "A bird chirping"})
 
 
 # # set_transform is applied on-the-fly, while map is applied fully to save
