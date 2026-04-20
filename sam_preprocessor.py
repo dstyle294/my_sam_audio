@@ -64,6 +64,34 @@ def sam_transform(batch, prompt="A bird chirping"):
         del processed_audio
     
     del inputs, results
+# Latent extraction
+def get_latent(batch, prompt="A bird chirping"):
+  audios = [example['path'] for example in batch["audio"]]
+  descriptions = [prompt for example in batch["audio"]]
+
+  inputs = processor(audios=audios, descriptions=descriptions).to(device) # type: ignore
+
+  with torch.inference_mode():
+    latents = sam_model.get_target_latents(inputs)
+    # results = sam_model.separate(inputs)
+  # processed_audio = results.target[0].detach().cpu()
+
+    
+  embeddings_list = []
+  for latent in latents:
+    latent = latent[0] if latent.dim() == 3 else latent
+    mean_latent = latent.mean(dim = -1)
+    max_latent = latent.max(dim = -1)[0]
+
+    # moves this back to cpu memory
+    combined = torch.cat([mean_latent, max_latent], dim = -1).cpu()
+    embeddings_list.append(combined)
+
+
+  del inputs, latents
+  torch.cuda.empty_cache()  
+
+  return {"embedding": [e.numpy() for e in embeddings_list]}
 
     # for item_idx, example in enumerate(batch["audio"]):
     #     inputs = processor(audios=[example['path']], descriptions=[prompt]).to(device) # type: ignore

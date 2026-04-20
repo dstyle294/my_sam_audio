@@ -337,6 +337,71 @@ class SAMAudio(BaseModel):
             noise=noise,
         )
 
+    @torch.inference_mode()
+    def get_target_latents(
+        self,
+        batch: Batch,
+        noise: Optional[torch.Tensor] = None,
+        ode_opt: Dict[str, Any] = DFLT_ODE_OPT,
+        reranking_candidates: int = 1,
+        predict_spans: bool = False,
+    ):
+        # Encode audio
+        forward_args = self._get_forward_args(batch, candidates=reranking_candidates)
+
+        if predict_spans and hasattr(self, "span_predictor") and batch.anchors is None:
+            batch = self.predict_spans(
+                batch=batch,
+                audio_features=self._unrepeat_from_reranking(
+                    forward_args["audio_features"], reranking_candidates
+                ),
+                audio_pad_mask=self._unrepeat_from_reranking(
+                    forward_args["audio_pad_mask"], reranking_candidates
+                ),
+            )
+
+        audio_features = forward_args["audio_features"]
+        B, T, C = audio_features.shape
+        C = C // 2  # we stack audio_features, so the actual channels is half
+
+        if noise is None:
+            noise = torch.randn_like(audio_features)
+
+        def vector_field(t, noisy_audio):
+            res = self.forward(
+                noisy_audio=noisy_audio,
+                time=t.expand(noisy_audio.size(0)),
+                **forward_args,
+            )
+            return res
+
+        states = odeint(
+            vector_field,
+            noise,
+            torch.tensor([0.0, 1.0], device=noise.device),
+            **ode_opt,
+        )
+
+        generated_features = states[-1].transpose(1, 2)
+        # generated_features has shape [B, 2C, T].  
+
+        generated_features = generated_features.reshape(2 * B, C, T)
+        # this will have shape [2B, C, T]
+
+        bsz = B // reranking_candidates
+
+        sizes = self.audio_codec.feature_idx_to_wav_idx(batch.sizes) // self.audio_codec.hop_length
+
+        print(generated_features)
+        target_latents = self.unbatch(generated_features[:B].view(bsz, reranking_candidates, C, T), sizes)
+
+        return target_latents
+
+
+
+
+
+
     def unbatch(self, wavs: torch.Tensor, sizes: torch.Tensor, time_dim: int = -1):
         result = []
         for row, size in zip(wavs, sizes, strict=False):
