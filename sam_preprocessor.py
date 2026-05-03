@@ -89,7 +89,6 @@ def get_latent(batch, prompt="A bird chirping"):
 
 
   del inputs, latents
-  torch.cuda.empty_cache()  
 
   return {"embedding": [e.numpy() for e in embeddings_list]}
 

@@ -392,7 +392,6 @@ class SAMAudio(BaseModel):
 
         sizes = self.audio_codec.feature_idx_to_wav_idx(batch.sizes) // self.audio_codec.hop_length
 
-        print(generated_features)
         target_latents = self.unbatch(generated_features[:B].view(bsz, reranking_candidates, C, T), sizes)
 
         return target_latents
