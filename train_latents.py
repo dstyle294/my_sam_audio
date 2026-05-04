@@ -27,15 +27,27 @@ for epoch in range(20):
     loss.backward()
     optimizer.step()
 
-for features, labels in test_dataloader:
-  logits = model(features)
-  loss = criterion(logits, labels)
+model.eval() # turns off dropout, batch normalization
+test_loss = 0
+all_preds = []
+all_labels = []
 
-  optimizer.zero_grad()
-  loss.backward()
-  optimizer.step()
+with torch.no_grad(): # 2. Disable gradient tracking
+    for features, labels in test_dataloader:
+        logits = model(features)
+        
+        # Calculate loss just for monitoring
+        loss = criterion(logits, labels.float())
+        test_loss += loss.item()
 
-  print(loss)
+        # Collect results for metrics (CMAP/ROC-AUC)
+        probs = torch.sigmoid(logits)
+        all_preds.append(probs)
+        all_labels.append(labels)
+
+# 3. Aggregate and Print results
+avg_loss = test_loss / len(test_dataloader)
+print(f"Final Test Loss: {avg_loss:.4f}")
 
 
   
