@@ -36,7 +36,7 @@ class LatentDataset(Dataset):
     self.labels = [one_hot_encode(label, class_list).tolist() for label in self.labels]
 
     self.embeddings = torch.as_tensor(self.embeddings).float()
-    self.labels = torch.as_tensor(self.labels).float()
+    self.labels = torch.as_tensor(self.labels).int()
 
   def __len__(self):
     return len(self.embeddings)
