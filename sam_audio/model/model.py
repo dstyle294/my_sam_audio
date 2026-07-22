@@ -76,6 +76,7 @@ class SAMAudio(BaseModel):
     config_cls = SAMAudioConfig
     revision = None
 
+
     def __init__(self, cfg: SAMAudioConfig):
         super().__init__()
         self.audio_codec = DACVAE(cfg.audio_codec)
@@ -91,7 +92,7 @@ class SAMAudio(BaseModel):
         )
         self.memory_proj = torch.nn.Linear(cfg.text_encoder.dim, cfg.transformer.dim)
         self.timestep_emb = SinusoidalEmbedding(cfg.transformer.dim)
-        self.visual_ranker = create_ranker(cfg.visual_ranker)
+        self.visual_ranker = create_ranker(cfg.visual_ranker) if cfg.visual_ranker is None else None
         self.text_ranker = create_ranker(cfg.text_ranker)
         if cfg.span_predictor is not None:
             self.span_predictor = PEAudioFrame.from_config(
