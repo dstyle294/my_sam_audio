@@ -111,8 +111,16 @@ def load_audio(sample, min_len, max_len, sampling_rate):
 
     start, end = int(start * sr), int(end * sr)
     audio, sr = sf.read(path, start=start, stop=end)
-    
+
+    if audio.ndim != 1:
+        audio = audio.swapaxes(1, 0)
+        audio = librosa.to_mono(audio)
+    if sr != sampling_rate:
+        audio = librosa.resample(audio, orig_sr=sr, target_sr=sampling_rate)
+        sr = sampling_rate
+
     target_len = int(max_len * sampling_rate)
+    print(len(audio), target_len)
     if len(audio) > target_len:
         # match BirdSet's "randomly extract fixed interval" behavior
         max_start = len(audio) - target_len
@@ -121,12 +129,6 @@ def load_audio(sample, min_len, max_len, sampling_rate):
     elif len(audio) < target_len:
         audio = np.pad(audio, (0, target_len - len(audio)))
 
-    if audio.ndim != 1:
-        audio = audio.swapaxes(1, 0)
-        audio = librosa.to_mono(audio)
-    if sr != sampling_rate:
-        audio = librosa.resample(audio, orig_sr=sr, target_sr=sampling_rate)
-        sr = sampling_rate
     return {
         **{k: v for k, v in sample.items() if k != 'audio'},
         'audio': {
@@ -286,7 +288,6 @@ def main(args):
         descriptions = load_descriptions(args.description, n)
 
         dataset = dataset.map(lambda ex: {"filepath": os.path.join(BIRDSET_ROOT, ex["filepath"])})
-        dataset = dataset.select(range(100))
 
         dataset = dataset.map(
             load_audio,
