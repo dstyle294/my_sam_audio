@@ -1,5 +1,12 @@
 ## Motivation
 
+
+## Prerequisites
+- Saved BirdSet dataset (and its path)
+- Set environment variables
+    - `export HF_HOME="$HOME/.cache/huggingface"`
+
+
 ## Workflow
 
 BirdSet will automatically save a dataset if you instantiate it's data module. Per their [repository](https://github.com/DBD-research-group/BirdSet), here is how to save a dataset to disk (and later load it).
