@@ -275,6 +275,7 @@ def main(args):
     print("   Model loaded.")
 
     splits = {
+        "train": args.train_path,
         "test": args.test_path,
     }
 

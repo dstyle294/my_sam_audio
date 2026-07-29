@@ -6,6 +6,10 @@
 - Set environment variables
     - `export HF_HOME="$HOME/.cache/huggingface"`
 
+## Default settings
+
+## SAM Audio settings
+Batch size = 8
 
 ## Workflow
 
