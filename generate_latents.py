@@ -287,8 +287,6 @@ def main(args):
 
         descriptions = load_descriptions(args.description, n)
 
-        dataset = dataset.select(range(100))
-
         dataset = dataset.map(lambda ex: {"filepath": os.path.join(BIRDSET_ROOT, ex["filepath"])})
 
         dataset = dataset.map(
@@ -301,12 +299,6 @@ def main(args):
             num_proc=4,   # parallelize across CPU workers since sf.read is I/O bound
             desc="Loading audio",
         )
-
-        # dataset = dataset.cast_column(args.audio_column, Audio(sampling_rate=processor.audio_sampling_rate, decode=True))
-
-        print(dataset[0]['audio'])
-
-        print(dataset.features)
 
         result = extract_latents(
             dataset=dataset,
