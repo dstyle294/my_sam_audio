@@ -34,7 +34,7 @@ import librosa, soundfile as sf
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--train_path", required=True, help="Path to saved train HF dataset")
-# parser.add_argument("--test_path",  required=True, help="Path to saved test HF dataset")
+parser.add_argument("--test_path",  required=True, help="Path to saved test HF dataset")
 parser.add_argument("--output_dir", required=True, help="Directory to save latent .pt files")
 parser.add_argument("--model", required=True, help="Type of SAM Model to use")
 parser.add_argument(
@@ -275,7 +275,7 @@ def main(args):
     print("   Model loaded.")
 
     splits = {
-        "train": args.train_path,
+        "test": args.test_path,
     }
 
 
@@ -286,6 +286,8 @@ def main(args):
         print(f"   {n} samples")
 
         descriptions = load_descriptions(args.description, n)
+
+        dataset = dataset.select(range(100))
 
         dataset = dataset.map(lambda ex: {"filepath": os.path.join(BIRDSET_ROOT, ex["filepath"])})
 
