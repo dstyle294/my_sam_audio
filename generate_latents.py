@@ -260,18 +260,18 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    model = args.model
-    print(f"Using model = {model}")
+    model_name = args.model
+    print(f"Using model = {model_name}")
 
     # --- Load processor (derives hop_length and sample_rate from model config) ---
-    print(f">> Loading SAMAudioProcessor from {model}")
-    processor = SAMAudioProcessor.from_pretrained(f"facebook/{model}")
+    print(f">> Loading SAMAudioProcessor from {model_name}")
+    processor = SAMAudioProcessor.from_pretrained(f"facebook/{model_name}")
     print(f"   sample_rate={processor.audio_sampling_rate}, hop_length={processor.audio_hop_length}")
 
     # --- Load model (caller is responsible for instantiation + weight loading) ---
     # Import here so the script is importable without sam_audio installed
-    print(f">> Loading SAMAudio model {model}")
-    model = SAMAudio.from_pretrained(f"facebook/{model}", proxies=None, resume_download=False).to(device).eval()
+    print(f">> Loading SAMAudio model {model_name}")
+    model = SAMAudio.from_pretrained(f"facebook/{model_name}", proxies=None, resume_download=False).to(device).eval()
     print("   Model loaded.")
 
     splits = {
