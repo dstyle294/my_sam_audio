@@ -84,7 +84,7 @@ class ConfusionMatrix(Metric):
         matrix = self.metric(logits, target)
         return matrix
 
-    def plot(self, class_names=None, save_dir="plots/confusion_matrix", filename="all_classes_grid.png"):
+    def plot(self, save_dir="plots/confusion_matrix", filename="all_classes_grid.png"):
         """
         Plot the confusion matrix as a grid of per-class 2x2 heatmaps.
 
@@ -98,12 +98,7 @@ class ConfusionMatrix(Metric):
         matrix = self.metric.compute().cpu().numpy()  # [num_classes, 2, 2]
         num_classes = matrix.shape[0]
 
-        if class_names is None:
-            class_names = [str(i) for i in range(num_classes)]
-        elif len(class_names) != num_classes:
-            raise ValueError(
-                f"Got {len(class_names)} class_names but confusion matrix has {num_classes} classes"
-            )
+        class_names = [str(i) for i in range(num_classes)]
 
         os.makedirs(save_dir, exist_ok=True)
 
