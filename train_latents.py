@@ -8,15 +8,15 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--train_path", required=True, help="Path to saved train latent dataset")
 parser.add_argument("--test_path", required=True, help="Path to saved test latent dataset")
-parser.add_argument("--train_batch_size", required=False, help="Batch size for training")
-parser.add_argument("--test_batch_size", required=False, help="Batch size for testing")
+parser.add_argument("--train_batch_size", required=False, help="Batch size for training", default=8)
+parser.add_argument("--test_batch_size", required=False, help="Batch size for testing", default=8)
 
 def main(args):
   train_ds = LatentDataset(args.train_path)
   test_ds  = LatentDataset(args.test_path)
 
-  train_loader = DataLoader(train_ds, batch_size=8, shuffle=True,  num_workers=4)
-  test_loader  = DataLoader(test_ds,  batch_size=8, shuffle=False, num_workers=4)
+  train_loader = DataLoader(train_ds, batch_size=int(args.train_batch_size), shuffle=True,  num_workers=4)
+  test_loader  = DataLoader(test_ds,  batch_size=int(args.test_batch_size), shuffle=False, num_workers=4)
 
   print(f"num_classes: {train_ds.num_classes}")
   print(f"latent shape: {train_ds.latents.shape}")  # [E, C, T]
@@ -36,6 +36,8 @@ def main(args):
       optimizer.zero_grad()
       loss.backward()
       optimizer.step()
+
+    print(f"Epoch {epoch + 1} done out of 20")
 
   model.eval() # turns off dropout, batch normalization
   test_loss = 0
