@@ -4,9 +4,13 @@ from torchmetrics.classification import (
     MulticlassAveragePrecision,
     MulticlassAUROC,
     MultilabelAUROC,
+    MulticlassConfusionMatrix,
+    MultilabelConfusionMatrix
 )
 from evaluate import Metric, ComputeMetricsBase
 from typing import Dict
+import os
+import torch
 
 
 # TODO: should the metric define the name being used?
@@ -64,6 +68,85 @@ class ROCAUC(Metric):
         if np.isnan(auroc):
             return 0
         return auroc.item()
+
+
+class ConfusionMatrix(Metric):
+    def __init__(self, num_classes, multilabel=True):
+        if multilabel:
+            self.metric = MultilabelConfusionMatrix(num_labels=num_classes)
+        else:
+            self.metric = MulticlassConfusionMatrix(num_classes=num_classes)
+
+        self.num_classes = num_classes
+
+    def __call__(self, logits=[], target=[]) -> torch.Tensor:
+        # multilabel confusion matrix is [num_classes, 2, 2], one 2x2 matrix per class
+        matrix = self.metric(logits, target)
+        return matrix
+
+    def plot(self, class_names=None, save_dir="plots/confusion_matrix", filename="all_classes_grid.png"):
+        """
+        Plot the confusion matrix as a grid of per-class 2x2 heatmaps.
+
+        Requires __call__ to have already been run at least once (so self.metric
+        has accumulated state). Saves the figure to save_dir/filename and returns
+        that path.
+        """
+        import math
+        import matplotlib.pyplot as plt
+
+        matrix = self.metric.compute().cpu().numpy()  # [num_classes, 2, 2]
+        num_classes = matrix.shape[0]
+
+        if class_names is None:
+            class_names = [str(i) for i in range(num_classes)]
+        elif len(class_names) != num_classes:
+            raise ValueError(
+                f"Got {len(class_names)} class_names but confusion matrix has {num_classes} classes"
+            )
+
+        os.makedirs(save_dir, exist_ok=True)
+
+        # Fewer columns -> bigger subplots -> more room per cell for large numbers
+        ncols = min(5, num_classes)
+        nrows = math.ceil(num_classes / ncols)
+        subplot_size = 3.6  # inches per subplot, comfortably fits 5-digit counts
+        fig, axes = plt.subplots(nrows, ncols, figsize=(subplot_size * ncols, subplot_size * nrows))
+        axes = axes.reshape(-1) if num_classes > 1 else [axes]
+
+        tick_labels = ["Neg", "Pos"]
+        for i in range(num_classes):
+            ax = axes[i]
+            mat = matrix[i]
+            vmax = mat.max()
+            ax.imshow(mat, cmap="Blues")
+            ax.set_title(class_names[i], fontsize=12)
+            ax.set_xticks([0, 1])
+            ax.set_yticks([0, 1])
+            ax.set_xticklabels(tick_labels, fontsize=10)
+            ax.set_yticklabels(tick_labels, fontsize=10)
+            ax.set_xlabel("Predicted", fontsize=9)
+            ax.set_ylabel("Actual", fontsize=9)
+            for r in range(2):
+                for c in range(2):
+                    val = int(mat[r, c])
+                    ax.text(
+                        c, r, f"{val:,}", ha="center", va="center",
+                        fontsize=17, fontweight="bold",
+                        color="white" if val > vmax / 2 else "black",
+                    )
+
+        # hide any unused subplots (grid may have more cells than classes)
+        for j in range(num_classes, len(axes)):
+            axes[j].axis("off")
+
+        fig.tight_layout()
+        save_path = os.path.join(save_dir, filename)
+        fig.savefig(save_path, dpi=150)
+        plt.close(fig)
+
+        print(f"Saved confusion matrix plot to {save_path}")
+        return save_path
 
 
 class AudioClassificationMetrics(ComputeMetricsBase):

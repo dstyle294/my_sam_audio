@@ -10,6 +10,8 @@ parser.add_argument("--train_path", required=True, help="Path to saved train lat
 parser.add_argument("--test_path", required=True, help="Path to saved test latent dataset")
 parser.add_argument("--train_batch_size", required=False, help="Batch size for training", default=8)
 parser.add_argument("--test_batch_size", required=False, help="Batch size for testing", default=8)
+parser.add_argument("--num_epochs", required=False, help="Number of epochs for training", default=20)
+
 
 def main(args):
   train_ds = LatentDataset(args.train_path)
@@ -28,16 +30,17 @@ def main(args):
 
   criterion = torch.nn.BCEWithLogitsLoss()
 
-  for epoch in range(20):
+  num_epochs = int(args.num_epochs)
+  for epoch in range(num_epochs):
     for features, labels in train_loader:
       logits = model(features)
       loss = criterion(logits, labels.float())
-      
+
       optimizer.zero_grad()
       loss.backward()
       optimizer.step()
 
-    print(f"Epoch {epoch + 1} done out of 20")
+    print(f"Epoch {epoch + 1} done out of {num_epochs}")
 
   model.eval() # turns off dropout, batch normalization
   test_loss = 0
@@ -48,7 +51,7 @@ def main(args):
   with torch.no_grad(): # 2. Disable gradient tracking
     for features, labels in test_loader:
       logits = model(features)
-      
+
       # Calculate loss just for monitoring
       loss = criterion(logits, labels.float())
       test_loss += loss.item()
@@ -61,19 +64,28 @@ def main(args):
   all_labels = all_labels.int()
 
   # 3. Aggregate results
-  avg_loss = test_loss / len(test_ds)
+  avg_loss = test_loss / len(test_loader)
 
   # 4. Calculating ROCAUC + cMAP
 
   get_cmAP = metrics.cmAP(train_ds.num_classes)
   get_ROCAUC = metrics.ROCAUC(train_ds.num_classes)
+  get_ConfusionMatrix = metrics.ConfusionMatrix(train_ds.num_classes)
+
+  print(f"pred min:  {all_preds.min().item():.4f}")
+  print(f"pred mean: {all_preds.mean().item():.4f}")
+  print(f"pred max:  {all_preds.max().item():.4f}")
 
   cmAP = get_cmAP(all_preds, all_labels)
   ROCAUC = get_ROCAUC(all_preds, all_labels)
+  _ = get_ConfusionMatrix(all_preds, all_labels)
 
   print(f"cmAP = {cmAP}")
   print(f"ROCAUC = {ROCAUC}")
   print(f"Average Test Loss = {avg_loss}")
+
+
+  get_ConfusionMatrix.plot(save_dir="plots/confusion_matrix")
 
 
 if __name__ == "__main__":
