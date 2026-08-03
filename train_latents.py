@@ -11,6 +11,8 @@ parser.add_argument("--test_path", required=True, help="Path to saved test laten
 parser.add_argument("--train_batch_size", required=False, help="Batch size for training", default=8)
 parser.add_argument("--test_batch_size", required=False, help="Batch size for testing", default=8)
 parser.add_argument("--num_epochs", required=False, help="Number of epochs for training", default=20)
+parser.add_argument("--pooling", required=False, help="Type of Pooling", default="mean_max", choices=["mean_max", "max", "mean", "flatten"])
+parser.add_argument("--pos_weight_clamp", required=False, help="Clamp for pos_weight, 0 if disabled", default="0", type=int)
 
 
 def main(args):
@@ -24,11 +26,18 @@ def main(args):
   print(f"latent shape: {train_ds.latents.shape}")  # [E, C, T]
   print(f"label shape:  {train_ds.labels.shape}")   # [E, N_C]
 
-  model = BirdSetClassifier(num_classes=train_ds.num_classes)
+  model = BirdSetClassifier(num_classes=train_ds.num_classes, pooling=args.pooling)
 
   optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
 
-  criterion = torch.nn.BCEWithLogitsLoss()
+  pos_weight = None
+  num_pos = torch.tensor(train_ds.labels).sum(dim=0)
+  num_neg = len(train_ds) - num_pos
+
+  if (args.pos_weight_clamp > 0):
+    pos_weight = (num_neg / num_pos.clamp(min=1)).clamp(min=args.pos_weight_clamp)
+
+  criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
   num_epochs = int(args.num_epochs)
   for epoch in range(num_epochs):
