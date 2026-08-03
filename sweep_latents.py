@@ -9,8 +9,8 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument("--train_path", required=True, help="Path to saved train latent dataset")
 parser.add_argument("--test_path", required=True, help="Path to saved test latent dataset")
-parser.add_argument("--train_batch_size", required=False, help="Batch size for training", default=8, type=int)
-parser.add_argument("--test_batch_size", required=False, help="Batch size for testing", default=8, type=int)
+parser.add_argument("--train_batch_size", required=False, help="Batch size for training", default=64, type=int)
+parser.add_argument("--test_batch_size", required=False, help="Batch size for testing", default=64, type=int)
 
 # sweep dimensions -- comma-separated lists, e.g. --poolings mean_max,flatten
 parser.add_argument("--poolings", required=False, default="mean_max",
@@ -23,11 +23,12 @@ parser.add_argument("--hidden_dims", required=False, default="1024",
                      help="Comma-separated list of hidden layer sizes to sweep, e.g. 256,1024")
 
 # fixed across the whole sweep, not part of the grid
-parser.add_argument("--norm_type", required=False, default="layernorm", choices=["layernorm", "batchnorm"])
+parser.add_argument("--norm_type", required=False, default="batchnorm", choices=["layernorm", "batchnorm"])
 parser.add_argument("--pos_weight_clamp", required=False, default=20, type=int,
                      help="Caps the max per-class pos_weight. 0 disables pos_weight entirely.")
 
 parser.add_argument("--output_csv", required=False, default="sweep_results.csv")
+parser.add_argument("-v", "--verbose", action="store_true", default=False)
 
 
 def parse_list(s, cast):
@@ -67,7 +68,7 @@ def main(args):
             train_ds, train_loader, test_loader, train_ds.num_classes,
             pooling=pooling, hidden_dim=hidden_dim, norm_type=args.norm_type,
             num_epochs=num_epochs, lr=lr, pos_weight_clamp=args.pos_weight_clamp,
-            plot=False, verbose=False,
+            plot=False, verbose=args.verbose,
         )
         elapsed = time.time() - start
         result["elapsed_sec"] = round(elapsed, 1)

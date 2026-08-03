@@ -15,7 +15,7 @@ parser.add_argument("--lr", required=False, help="Learning rate", default=5e-4, 
 parser.add_argument("--pooling", required=False, help="Type of pooling", default="mean_max",
                      choices=["mean_max", "max", "mean", "flatten", "gru"])
 parser.add_argument("--hidden_dim", required=False, help="Classifier hidden layer size", default=1024, type=int)
-parser.add_argument("--norm_type", required=False, help="Normalization layer", default="layernorm",
+parser.add_argument("--norm_type", required=False, help="Normalization layer", default="batchnorm",
                      choices=["layernorm", "batchnorm"])
 parser.add_argument("--pos_weight_clamp", required=False, type=int, default=20,
                      help="Caps the max per-class pos_weight (uncapped num_neg/num_pos ratios can be "
@@ -50,9 +50,6 @@ def train_and_evaluate(train_ds, train_loader, test_loader, num_classes,
     if pos_weight_clamp > 0:
         num_pos = train_ds.labels.sum(dim=0)
         num_neg = len(train_ds) - num_pos
-        # NOTE: clamp(max=...), not clamp(min=...) -- this caps the ceiling on
-        # extreme per-class weights (rare classes can otherwise get weights in
-        # the hundreds, which destabilizes training), it doesn't raise a floor
         pos_weight = (num_neg / num_pos.clamp(min=1)).clamp(max=pos_weight_clamp)
 
     criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
