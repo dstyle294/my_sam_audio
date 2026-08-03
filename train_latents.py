@@ -35,7 +35,7 @@ def main(args):
   num_neg = len(train_ds) - num_pos
 
   if (args.pos_weight_clamp > 0):
-    pos_weight = (num_neg / num_pos.clamp(min=1)).clamp(min=args.pos_weight_clamp)
+    pos_weight = (num_neg / num_pos.clamp(min=1)).clamp(max=args.pos_weight_clamp)
 
   criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
