@@ -242,6 +242,8 @@ def extract_latents(
         all_latents.append(latents.cpu())
         all_labels.append(batch_labels)
 
+        del batch, target_latents, latents
+
         print(f"  Processed {end}/{n} samples", end="\r")
 
     print()
@@ -320,6 +322,7 @@ def main(args):
         print(f"   labels:  {result['labels'].shape}")
 
     print("\n>> Done.")
+
 
 
 if __name__ == "__main__":
