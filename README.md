@@ -1,26 +1,111 @@
-<div align="center">
+# SAM-Audio BirdSet Latent Pipeline
 
-# SAM-Audio
+This repository is a fork of the upstream SAM-Audio project, adapted for a BirdSet-based latent-classification workflow.
 
-[![arXiv](https://img.shields.io/badge/arXiv-2512.18099-b31b1b.svg)](https://arxiv.org/abs/2512.18099)
-![CI](https://github.com/facebookresearch/sam-audio/actions/workflows/ci.yaml/badge.svg)
-[![Hugging Face](https://img.shields.io/badge/HuggingFace-Collection-orange?logo=huggingface)](https://huggingface.co/collections/facebook/sam-audio)
+The main purpose of this fork is to use SAM-Audio as a feature extractor instead of only treating it as a direct source-separation model. BirdSet samples are chunked, passed through the SAM-Audio model, and the resulting target latents are saved as reusable tensors for downstream multilabel bird-audio classification.
 
-![model_image](assets/sam_audio_main_model.png)
+## Why this fork exists
 
-</div>
+This project focuses on the following pipeline:
 
-Segment Anything Model for Audio [[**Blog**](https://ai.meta.com/blog/sam-audio/)] [[**Paper**](https://ai.meta.com/research/publications/sam-audio-segment-anything-in-audio/)] [[**Demo**](https://aidemos.meta.com/segment-anything/editor/segment-audio)]
+- load BirdSet data and prepare fixed-length 5s chunks
+- encode each chunk with the SAM-Audio model
+- store latent tensors and multi-hot labels as a compact `.pt` archive
+- train a downstream classifier over the latent representation
+- sweep pooling and learning hyperparameters to compare model architectures
 
-SAM-Audio is a foundation model for isolating any sound in audio using text, visual, or temporal prompts. It can separate specific sounds from complex audio mixtures based on natural language descriptions, visual cues from video, or time spans.
+In other words, the fork turns SAM-Audio into a latent feature backbone for ecological audio classification.
 
-SAM-Audio and the Judge model crucially rely on [Perception-Encoder Audio-Visual (PE-AV)](https://huggingface.co/facebook/pe-av-large), which you can read more about [here](https://ai.meta.com/research/publications/pushing-the-frontier-of-audiovisual-perception-with-large-scale-multimodal-correspondence-learning/)
+## Architecture
+
+![SAM-Audio BirdSet latent architecture](docs/architecture/sam-embeddings-classifier.png)
+
+The architecture follows a simple pattern:
+
+1. BirdSet train and test datasets are converted into audio chunks.
+2. Each chunk is passed through SAM-Audio latent extraction.
+3. Latent tensors are saved as a dictionary with the schema:
+   `{"latents": [E, C, D, T], "labels": [E, N_C]}`
+4. A latent classifier is trained with pooling strategies such as mean, max, mean+max, or GRU-based temporal pooling.
+5. Model quality is measured with multilabel metrics such as mAP and AUROC.
+
+## Repository layout
+
+- `latent_pipeline/` — latent generation, training, and visualization scripts
+- `evaluation/` — metric implementations and evaluation utilities
+- `docs/` — project notes and workflow documentation
+- `notebooks/` — exploratory notebooks
+- `apply_sam/` — older preprocessing scripts kept for reference
+- `sam_audio/` — upstream SAM-Audio model and processor code
+- `examples/` — official SAM-Audio prompting examples
+
+## Main workflow
+
+### 1) Generate latent representations
+
+```bash
+python latent_pipeline/generate_latents.py \
+  --train_path /path/to/train_dataset \
+  --test_path /path/to/test_dataset \
+  --output_dir /path/to/output \
+  --model sam-audio-base \
+  --description "bird audio" \
+  --batch_size 8
+```
+
+This saves latent tensors and labels in a compact format that can be reused across training runs.
+
+### 2) Train a classifier on the latents
+
+```bash
+python latent_pipeline/train_latents.py \
+  --train_path /path/to/train_latents.pt \
+  --test_path /path/to/test_latents.pt \
+  --pooling mean_max \
+  --num_epochs 20 \
+  --lr 5e-4
+```
+
+### 3) Sweep hyperparameters
+
+```bash
+python latent_pipeline/sweep_latents.py \
+  --train_path /path/to/train_latents.pt \
+  --test_path /path/to/test_latents.pt \
+  --poolings mean,max,mean_max,gru \
+  --num_epochs_list 10,20,30 \
+  --lrs 1e-4,5e-4,1e-3 \
+  --hidden_dims 256,1024 \
+  --output_csv sweep_results.csv
+```
+
+### 4) Visualize latent structure
+
+```bash
+python latent_pipeline/visualize_latents.py \
+  --latents_path /path/to/train_latents.pt \
+  --output_dir /path/to/plots \
+  --method both
+```
+
+## What the code does
+
+The main logic is split across:
+
+- `latent_pipeline/generate_latents.py` — converts BirdSet entries into fixed-length chunks and extracts SAM-Audio target latents
+- `latent_pipeline/dataset_latents.py` — dataset wrapper for loading saved latent archives
+- `latent_pipeline/classifier_latents.py` — latent classifiers with configurable pooling and normalization
+- `latent_pipeline/train_latents.py` — train/eval loop for the latent-space classifier
+- `latent_pipeline/sweep_latents.py` — hyperparameter sweep across pooling, learning rate, hidden size, and epochs
+- `evaluation/metrics.py` — multilabel mAP and AUROC metric implementations
 
 ## Setup
 
-**Requirements:**
+Requirements:
+
 - Python >= 3.11
-- CUDA-compatible GPU (recommended)
+- CUDA-compatible GPU recommended
+- access to the upstream SAM-Audio checkpoints on Hugging Face
 
 Install dependencies:
 
@@ -28,119 +113,36 @@ Install dependencies:
 pip install .
 ```
 
-## Usage
+If you are using the upstream SAM-Audio model checkpoints, authenticate to Hugging Face before running the latent extraction pipeline.
 
-⚠️ Before using SAM Audio, please request access to the checkpoints on the SAM Audio
-Hugging Face [repo](https://huggingface.co/facebook/sam-audio-large). Once accepted, you
-need to be authenticated to download the checkpoints. You can do this by running
-the following [steps](https://huggingface.co/docs/huggingface_hub/en/quick-start#authentication)
-(e.g. `hf auth login` after generating an access token.)
+## Upstream context
 
-### Basic Text Prompting
+This repository is based on the original SAM-Audio project from Meta AI. The upstream work is a general-purpose audio segmentation foundation model that uses text, visual, and temporal prompts to isolate target sounds in mixtures.
 
-```python
-from sam_audio import SAMAudio, SAMAudioProcessor
-import torchaudio
-import torch
+This fork builds on that foundation by treating SAM-Audio as a feature extractor for BirdSet-style downstream audio classification tasks.
 
-model = SAMAudio.from_pretrained("facebook/sam-audio-large")
-processor = SAMAudioProcessor.from_pretrained("facebook/sam-audio-large")
-model = model.eval().cuda()
+## Project notes
 
-file = "<audio file>" # audio file path or torch tensor
-description = "<description>"
+Additional documentation is available under the [docs](docs) directory:
 
-batch = processor(
-    audios=[file],
-    descriptions=[description],
-).to("cuda")
-
-with torch.inference_mode():
-    # NOTE: `predict_spans` and `reranking_candidates` have a large impact on performance.
-    # Setting `predict_span=True` and `reranking_candidates=8` will give you better results at the cost of
-    # latency and memory. See the "Span Prediction" section below for more details
-   result = model.separate(batch, predict_spans=False, reranking_candidates=1)
-
-# Save separated audio
-sample_rate = processor.audio_sampling_rate
-torchaudio.save("target.wav", result.target.cpu(), sample_rate)      # The isolated sound
-torchaudio.save("residual.wav", result.residual.cpu(), sample_rate)  # Everything else
-```
-
-### Prompting Methods
-
-SAM-Audio supports three types of prompts:
-
-1. **Text Prompting**: Describe the sound you want to isolate using natural language. To match training, please use lowercase noun-phrase/verb-phrase (NP/VP) format for text (for example instead of "Thunder can be heard in the background" use "thunder").
-   ```python
-   processor(audios=[audio], descriptions=["man speaking"])
-   ```
-
-2. **Visual Prompting**: Use video frames and masks to isolate sounds associated with visual objects
-   ```python
-   processor(audios=[video], descriptions=[""], masked_videos=processor.mask_videos([frames], [mask]))
-   ```
-
-3. **Span Prompting**: Specify time ranges where the target sound occurs
-   ```python
-   processor(audios=[audio], descriptions=["car honking"], anchors=[[["+", 6.3, 7.0]]])
-   ```
-
-See the [examples](examples) directory for more detailed examples
-
-### Span Prediction (Optional for Text Prompting)
-
-We also provide support for automatically predicting the spans based on the text description, which is especially helpful for separating non-ambience sound events.  You can enable this by adding `predict_spans=True` in your call to `separate`
-
-```python
-with torch.inference_mode()
-   outputs = model.separate(batch, predict_spans=True)
-
-# To further improve performance (at the expense of latency), you can add candidate re-ranking
-with torch.inference_mode():
-   outputs = model.separate(batch, predict_spans=True, reranking_candidates=8)
-```
-
-### Re-Ranking
-
-We provide the following models to assess the quality of the separated audio:
-
-- [CLAP](https://github.com/LAION-AI/CLAP): measures the similarity between the target audio and text description
-- [Judge](https://huggingface.co/facebook/sam-audio-judge): measures the overall separation quality across 3 axes: precision, recall, and faithfulness (see the [model card](https://huggingface.co/facebook/sam-audio-judge#output-format) for more details)
-- [ImageBind](https://github.com/facebookresearch/ImageBind): for visual prompting, we measure the imagebind embedding similarity between the separated audio and the masked input video
-
-We provide support for generating multiple candidates (by setting `reranking_candidates=<k>` in your call to `separate`), which will generate `k` audios, and choose the best one based on the ranking models mentioned above
-
-# Models
-
-Below is a table of each of the models we released along with their overall subjective evaluation scores
-
-| Model    | General SFX | Speech | Speaker | Music | Instr(wild) | Instr(pro) |
-|----------|-------------|--------|---------|-------|-------------|------------|
-| [`sam-audio-small`](https://huggingface.co/facebook/sam-audio-small) | 3.62        | 3.99   | 3.12    | 4.11  | 3.56        | 4.24       |
-| [`sam-audio-base`](https://huggingface.co/facebook/sam-audio-base)   | 3.28        | 4.25   | 3.57    | 3.87  | 3.66        | 4.27       |
-| [`sam-audio-large`](https://huggingface.co/facebook/sam-audio-large) | 3.50        | 4.03   | 3.60    | 4.22  | 3.66        | 4.49       |
-
-We additional release another variant (in each size) that is better specifically on correctness of target sound as well as visual prompting:
-- [`sam-audio-small-tv`](https://huggingface.co/facebook/sam-audio-small-tv)
-- [`sam-audio-base-tv`](https://huggingface.co/facebook/sam-audio-base-tv)
-- [`sam-audio-large-tv`](https://huggingface.co/facebook/sam-audio-large-tv)
-
-## Evaluation
-
-See the [eval](eval) directory for instructions and scripts to reproduce results from the paper
+- [docs/001-generate-latents.md](docs/001-generate-latents.md)
+- [docs/002-visualize-latents.md](docs/002-visualize-latents.md)
+- [docs/003-dataset-latents.md](docs/003-dataset-latents.md)
+- [docs/004-train-latents.md](docs/004-train-latents.md)
+- [docs/005-classifier-latents.md](docs/005-classifier-latents.md)
+- [docs/006-sweep-latents.md](docs/006-sweep-latents.md)
 
 ## Contributing
 
-See [contributing](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md) for more information.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for project guidelines.
 
 ## License
 
-This project is licensed under the SAM License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the SAM License. See [LICENSE](LICENSE).
 
-## Citing SAM Audio
+## Citing the upstream model
 
-If you use SAM Audio in your research, please use the following BibTex entry:
+If you use the upstream SAM-Audio model in your research, please cite the original paper:
 
 ```bibtex
 @article{shi2025samaudio,
